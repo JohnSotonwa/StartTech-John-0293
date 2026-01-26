@@ -1,0 +1,19 @@
+name: Frontend Deploy
+
+on:
+  push:
+    paths: ["Client/**"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm install
+        working-directory: Client
+      - run: npm run build
+        working-directory: Client
+      - run: aws s3 sync Client/dist s3://$S3_BUCKET --delete
