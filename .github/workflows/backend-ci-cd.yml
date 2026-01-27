@@ -28,14 +28,14 @@ jobs:
 
       - name: Run Tests
         run: go test ./...
-        working-directory: backend
+        working-directory: backend/MuchToDo
 
       - name: Code Quality Checks
         run: go vet ./...
-        working-directory: backend
+        working-directory: backend/MuchToDo
 
       - name: Build Docker Image
-        run: docker build -t starttech-backend:latest backend
+        run: docker build -t starttech-backend:latest backend/MuchToDo
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
