@@ -1,30 +1,26 @@
 #!/bin/bash
-# rollback.sh
-# Rollback backend Docker container to previous tag
-
 set -e
 
-if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: $0 <ALB_DNS_NAME> <PREVIOUS_IMAGE_TAG>"
-  exit 1
-fi
+# Rollback script for frontend & backend
 
-ALB_DNS=$1
-PREV_IMAGE=$2
-SSH_USER="ubuntu"
-KEY_PATH="~/.ssh/starttech.pem"
+echo "Rolling back frontend to previous S3 version..."
+# S3 rollback assumes versioning is enabled
+aws s3 sync s3://$S3_BUCKET_NAME s3://$S3_BUCKET_NAME --exact-timestamps --delete
 
-INSTANCE_IDS=$(aws elbv2 describe-target-health \
-    --target-group-arn $(aws elbv2 describe-target-groups --names backend-tg --query 'TargetGroups[0].TargetGroupArn' --output text) \
-    --query 'TargetHealthDescriptions[*].Target.Id' --output text)
+echo "Rolling back backend Docker image..."
+ssh -o StrictHostKeyChecking=no -i "$SSH_PRIVATE_KEY" ec2-user@$ALB_DNS_NAME << EOF
+  # Stop current container
+  docker stop starttech-backend || true
+  docker rm starttech-backend || true
 
-for INSTANCE in $INSTANCE_IDS; do
-  echo "Rolling back instance: $INSTANCE"
-  ssh -o StrictHostKeyChecking=no -i $KEY_PATH $SSH_USER@$INSTANCE <<EOF
-    docker stop backend || true
-    docker rm backend || true
-    docker run -d --name backend -p 8080:8080 --restart unless-stopped $PREV_IMAGE
+  # Pull previous image tag (assumes 'previous' tag exists)
+  docker pull $ECR_REPO:previous
+  docker run -d \
+    --name starttech-backend \
+    -p 8080:8080 \
+    --env REDIS_ENDPOINT=$REDIS_ENDPOINT \
+    --env MONGO_URI=$MONGO_URI \
+    $ECR_REPO:previous
 EOF
-done
 
 echo "Rollback complete!"

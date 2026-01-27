@@ -1,20 +1,17 @@
 #!/bin/bash
-# health-check.sh
-# Check backend API health endpoint
+set -e
 
-if [ -z "$1" ]; then
-  echo "Usage: $0 <BACKEND_URL>"
-  exit 1
-fi
+# Ensure required environment variable
+: "${ALB_DNS_NAME:?ALB_DNS_NAME not set}"
 
-URL=$1
+URL="http://$ALB_DNS_NAME:8080/health"
+echo "Checking backend health at $URL ..."
 
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" $URL/health)
+STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
 
-if [ "$HTTP_STATUS" -eq 200 ]; then
-  echo "Backend is healthy ✅"
-  exit 0
+if [ "$STATUS_CODE" -eq 200 ]; then
+    echo "✅ Backend is healthy (status code $STATUS_CODE)"
 else
-  echo "Backend is unhealthy ❌ (HTTP status: $HTTP_STATUS)"
-  exit 1
+    echo "❌ Backend health check failed (status code $STATUS_CODE)"
+    exit 1
 fi
