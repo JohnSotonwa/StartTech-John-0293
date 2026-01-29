@@ -1,147 +1,84 @@
-StartTech Application - README.md
-# StartTech Full-Stack Application
+# StartTech Full-Stack Infrastructure & Application Deployment
 
-This repository contains the **frontend (React)** and **backend (Golang)** code for the StartTech application. It is fully integrated with CI/CD pipelines that deploy the frontend to **S3 + CloudFront** and the backend as a **Docker container on EC2 instances** behind an **ALB**.
-
----
-
-## **Repository Structure**
-
-
-
-starttech-application/
-├── .github/
-│ └── workflows/
-│ ├── frontend-ci-cd.yml
-│ └── backend-ci-cd.yml
-├── frontend/ # React frontend code
-├── backend/ # Golang backend code
-├── scripts/
-│ ├── deploy-backend.sh
-│ └── health-check.sh
-└── README.md
-
+This repository contains the infrastructure and application setup for the StartTech full-stack project.  
+The solution demonstrates a production-style deployment on AWS using Terraform, Docker, GitHub Actions, and managed AWS services.
 
 ---
 
-## **Secrets Required in GitHub**
+## 🔧 Technology Stack
 
-You must create the following **repository secrets** in GitHub:
+### Infrastructure
+- **Terraform** – Infrastructure as Code
+- **AWS VPC** – Custom networking with public and private subnets
+- **EC2 Auto Scaling Group** – Backend compute
+- **Application Load Balancer (ALB)** – Traffic distribution
+- **Amazon ElastiCache (Redis)** – Caching/session storage
+- **Amazon S3** – Frontend static hosting
+- **Amazon CloudFront** – CDN for frontend
+- **Amazon ECR** – Docker image registry
+- **Amazon CloudWatch** – Logging and monitoring
 
-| Secret Name              | Description |
-|---------------------------|-------------|
-| `AWS_ACCESS_KEY_ID`       | Your AWS IAM user's access key |
-| `AWS_SECRET_ACCESS_KEY`   | Your AWS IAM user's secret key |
-| `AWS_REGION`              | AWS region (e.g., `us-east-1`) |
-| `ALB_DNS_NAME`            | DNS of the backend Application Load Balancer |
-| `ECR_REPO`                | Backend Docker image ECR repository URL |
-| `SSH_PRIVATE_KEY`         | Private key for connecting to EC2 instances (PEM content) |
-| `S3_BUCKET_NAME`          | Frontend S3 bucket name |
-| `CLOUDFRONT_DIST_ID`      | CloudFront distribution ID for the frontend |
-
-> ⚠️ `SSH_PRIVATE_KEY` must contain the full private key text (including `-----BEGIN RSA PRIVATE KEY-----` and `-----END RSA PRIVATE KEY-----`) with proper line breaks.
-
----
-
-## **Frontend Pipeline**
-
-The **frontend CI/CD workflow** builds and deploys the React application:
-
-1. Checkout the repository.
-2. Install Node.js dependencies.
-3. Run unit tests.
-4. Build the production-ready React bundle.
-5. Run `npm audit` for security scanning.
-6. Deploy the build folder to the **S3 bucket**.
-7. Invalidate **CloudFront cache** for immediate changes.
-
-Trigger: `push` to the `main` branch.
+### Application
+- **Backend:** Golang REST API (Dockerized)
+- **Frontend:** React (static build)
+- **CI/CD:** GitHub Actions
 
 ---
 
-## **Backend Pipeline**
+## 📁 Repository Structure
 
-The **backend CI/CD workflow** builds and deploys the Golang API:
+.
+├── backend/
+│ └── MuchToDo/ # Go application (go.mod located here)
+├── frontend/ # React application
+├── terraform/ # Infrastructure code
+├── scripts/ # Deployment scripts
+├── .github/workflows/ # CI/CD pipelines
+├── README.md
+└── RUNBOOK.md
 
-1. Checkout the repository.
-2. Run Go vet for code quality.
-3. Build the backend Docker image.
-4. Login to **ECR** using AWS credentials.
-5. Tag and push the Docker image to ECR.
-6. Deploy the image to all EC2 instances behind the **ALB** using `deploy-backend.sh`.
-7. Run `health-check.sh` to ensure the backend is healthy.
-
-Trigger: `push` to the `main` branch.
 
 ---
 
-## **Scripts**
+## 🚀 Deployment Overview
 
-### **`deploy-backend.sh`**
+### Infrastructure Deployment
+- Infrastructure is provisioned using Terraform.
+- Resources include VPC, subnets, ALB, EC2 Auto Scaling Group, Redis, S3, CloudFront, and CloudWatch.
+- Outputs expose key endpoints such as:
+  - ALB DNS Name
+  - CloudFront domain
+  - Redis endpoint
 
-- Deploys the latest Docker image to all EC2 instances behind the ALB.
-- Uses AWS CLI to find instance IDs and public IPs.
-- Uses SSH with the private key from GitHub secrets.
-- Stops old container and runs the new image.
-
-### **`health-check.sh`**
-
-- Sends an HTTP request to the backend `/health` endpoint via ALB.
-- Returns `✅` if status code is 200.
-- Fails the workflow if status code is not 200.
+### Application Deployment
+- Backend is built as a Docker image and pushed to Amazon ECR.
+- EC2 instances pull the image and run containers behind an ALB.
+- Frontend is built and synced to S3, then served globally via CloudFront.
 
 ---
 
-## **Setting Up Locally**
+## 🌐 Access Points
 
-1. Clone the repository:
+- **Backend API:**  
+  Accessible via the ALB DNS name.
 
-```bash
-git clone git@github.com:YourUsername/starttech-application.git
-cd starttech-application
+- **Frontend Application:**  
+  Accessible via the CloudFront domain.
 
+---
 
-Ensure Node.js and Go are installed locally for testing.
+## 🔐 Security Notes
 
-Install frontend dependencies:
+- No AWS credentials are committed to this repository.
+- GitHub Secrets are used for all sensitive values.
+- IAM permissions follow least-privilege principles.
 
-cd frontend
-npm install
+---
 
+## 📌 Notes for Assessors
 
-Build frontend locally:
+- This repository is intended for **view-only evaluation**.
+- All infrastructure and application components can be inspected via the AWS Console using read-only IAM permissions.
+- No manual intervention is required to validate the deployment.
 
-npm run build
-
-
-Run backend locally (for testing):
-
-cd backend
-go run main.go
-
-Testing CI/CD Workflows
-
-Make a change in either frontend/ or backend/.
-
-Push to main branch:
-
-git add .
-git commit -m "Test CI/CD"
-git push origin main
-
-
-Check GitHub Actions → Workflow runs → see logs for success/failure.
-
-Frontend should be live at: https://<CloudFrontDomain>/
-
-Backend health can be checked at: http://<ALB_DNS_NAME>:8080/health
-
-Notes
-
-Backend Docker deployment requires SSH_PRIVATE_KEY to connect to EC2 instances.
-
-Frontend deployment will overwrite the S3 bucket and invalidate CloudFront cache automatically.
-
-CI/CD pipelines use only the GitHub secrets — no local environment setup needed for deployment.
-
-
+---
